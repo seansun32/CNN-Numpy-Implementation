@@ -39,18 +39,19 @@ X_val -= mean_image
 print(X_train.shape)
 
 
-model=CNNModel(weight_scale=5e-1,learning_rate=3e-3)
+model=CNNModel(weight_scale=1e-1,learning_rate=5e-2)
 
 channel_num=X_train.shape[1]
 print('channelnum: ',channel_num)
 
 X_tmp=X_train[0:5]
 print(X_tmp.shape)
-out=model.conv_layer(X_tmp,(7,32,1,3),(2,2))
+out=model.conv_layer(X_tmp,(5,32,1,0),(2,2))
+out=model.conv_layer(out,(3,64,1,0),(2,2))
 out=model.fc_layer(out,1024)
 out=model.fc_layer(out,10)
 
 
-model.train(X_train,y_train,X_val,y_val,128,10,'sgd')
+model.train(X_train,y_train,X_val,y_val,64,10,'sgd')
 
 
