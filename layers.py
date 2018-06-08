@@ -75,10 +75,10 @@ def conv_forward(x,w,b,conv_param):
     x_pad=np.pad(x,((0,0),(0,0),(pad,pad),(pad,pad)),'constant',constant_values=0)
     out=np.zeros(N,F,H_out,W_out)
 
-    for n in range N:
-        for f in range F:
-            for i in range H_out:
-                for j in range W_out:
+    for n in range(N):
+        for f in range(F):
+            for i in range(H_out):
+                for j in range(W_out):
                     out[n,f,i,j]=np.sum(x_pad[n,:,i*stride:i*stride+HH,j*stride:j*stride+WW]*w[f,:,:,:])+b[f]
     
     cache=(x,w,b,conv_param)
@@ -104,10 +104,10 @@ def conv_backward(dout,cache):
     dw=np.zeros(w.shape)
     db=np.zeros(b.shape)
 
-    for n in range N:
-        for f in range F:
-            for i in range H_out:
-                for j in range W_out:
+    for n in range(N):
+        for f in range(F):
+            for i in range(H_out):
+                for j in range(W_out):
                     dx_pad[n,:,i*stride:i*stride+HH,j*stride:j*stride+WW] += dout[n,f,i,j]*w[n,:,:,:]
                     dw[f,:,:,:] += dout[n,f,i,j]*x_pad[n,:,i*stride+HH,j*stride+WW]
                     db[f] += dout[n,f,i,j]
@@ -129,10 +129,10 @@ def maxpool_forward(x,pool_param):
 
     out=np.zeros((N,C,H_out,W_out))
 
-    for n in range N:
-        for c in range C:
-            for i in H_out:
-                for j in W_out:
+    for n in range(N):
+        for c in range(C):
+            for i in range(H_out):
+                for j in range(W_out):
                     out[n,c,i,j]=np.max(x[n,c,i*stride:i*stride+HH,j*stride:j*stride+WW])
 
     cache=(x,pool_param)
@@ -150,17 +150,22 @@ def maxpool_backward(dout,cache):
     H_out=1+(H-HH)//stride
     W_out=1+(W-WW)//stride
 
-    for n in range N:
-        for c in range C:
-            for i in range H:
-                for j in range W:
+    for n in range(N):
+        for c in range(C):
+            for i in range(H):
+                for j in range(W):
                     ind_H,ind_W=np.unravel_index(np.argmax(x[n,c,i*stride:i*stride+HH,j*stride:j*stride+WW]),(HH,WW))
                     dx[n,c,i*stride+ind_H,j*stride+inde_W]=dout[n,c,i,j]
 
     return dx
 
 
-def sorfmax_loss(x,y):
+
+def softmax(x,y):
+    pass
+
+
+def softmax_loss(x,y):
     '''
     x:(N,C)
     y:(N)
@@ -173,7 +178,7 @@ def sorfmax_loss(x,y):
     correct_x=x[np.arange(N),y]
     
     prob=np.exp(x)/np.sum(np.exp(x),axis=1,keepdims=True)
-    correct_prob=np.exp(corrext_x)/np.sum(np.exp(x),axis=1,keepdims=True)
+    correct_prob=np.exp(correct_x)/np.sum(np.exp(x),axis=1)
     loss=np.sum(-1*np.log(correct_prob),axis=0)
     loss /= N
 
@@ -191,10 +196,43 @@ here we use fast convolution & fast maxpooling which implemented in im2col.py
 because implementation above uses too many loops and thus time&resource comsuming
 '''
 
+#fc_relu
+def fc_relu_forward(x,w,b):
+    out,cache_fc=fc_forward(x,w,b)
+    out,cache_relu=relu_forward(out)
+    
+    cache=(cache_fc,cache_relu)
+    return out,cache
+    
+def fc_relu_backward(dout,cache):
+    cache_fc,cache_relu=cache
+    dout=relu_backward(dout,cache_relu)
+    dout,dw,db=fc_backward(dout,cache_fc)
+
+    return dout,dw,db
+
+
+
+#conv+relu
+def conv_relu_forward(x,w,b,conv_param):
+    out,cache_conv=conv_forward_fast(x,w,b,conv_param)
+    out,cache_relu=relu_forward(out)
+
+    cache=(cache_conv,cache_relu)
+    return out,cache
+
+def conv_relu_backward(dout,cache):
+    cache_conv,cache_relu=cache
+
+    dout=relu_backward(dout,cache_relu)
+    dout,dw,db=conv_backward_fast(dout,cache_conv)
+
+    return dout,dw,db
+
 
 #conv+relu+maxpool
 def conv_relu_pool_forward(x,w,b,conv_param,pool_param):
-    out,cache_conv=conv_forward_fast(x,w,conv_param)
+    out,cache_conv=conv_forward_fast(x,w,b,conv_param)
     out,cache_relu=relu_forward(out)
     out,cache_pool=maxpool_forward_fast(out,pool_param)
 
@@ -208,7 +246,5 @@ def conv_relu_pool_backward(dout,cache):
     dout=relu_backward(dout,cache_relu)
     dout,dw,db=conv_backward_fast(dout,cache_conv)
     
-    return dout,dx,db
-
-
+    return dout,dw,db
 
